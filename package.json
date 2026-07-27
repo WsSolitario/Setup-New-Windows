@@ -1,0 +1,21 @@
+{
+  "name": "workstation-setup-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "API de preconfiguracion automatizada para equipos Windows 11",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "check": "node --check src/server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "pg": "^8.16.0"
+  }
+}

@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: workstations
+      POSTGRES_USER: workstation
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workstation -d workstations"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      TRUST_PROXY: 1
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: workstations
+      PGUSER: workstation
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGSSL: "false"
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+      LOCAL_ADMIN_USERNAME: ${LOCAL_ADMIN_USERNAME:-Plasencia}
+      LOCAL_ADMIN_FULL_NAME: ${LOCAL_ADMIN_FULL_NAME:-Nombre Plasencia}
+      LOCAL_ADMIN_PASSWORD: ${LOCAL_ADMIN_PASSWORD:?Defina LOCAL_ADMIN_PASSWORD en .env}
+      NINITE_PATH: /app/artifacts/ninite.exe
+    volumes:
+      - ./artifacts:/app/artifacts:ro
+    ports:
+      - "${API_PORT:-3000}:3000"
+
+volumes:
+  postgres_data:
