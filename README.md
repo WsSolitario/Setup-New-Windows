@@ -4,41 +4,41 @@ Backend de preconfiguracion para equipos Windows 11. Registra cada equipo por nu
 
 ## Puesta en marcha con LXC Proxmox
 
-La API quedara en el LXC `10.10.10.25` y se publicara como `windows.ssdevsolutions.com`. Cree primero un registro DNS `A` interno que resuelva ese nombre a `10.10.10.25`. Dentro de un LXC Debian 12 o Ubuntu 24.04 con red y acceso saliente HTTPS, ejecute como `root`:
+La API queda en el LXC `10.10.10.25` y Nginx Proxy Manager (NPM) publica `windows.ssdevsolutions.com` hacia ese LXC. Cree el registro DNS que usa NPM y configure el Proxy Host con:
+
+```text
+Forward Hostname/IP: 10.10.10.25
+Forward Port:        3000
+Forward Scheme:      http
+```
+
+Seleccione en NPM el certificado Let's Encrypt para `windows.ssdevsolutions.com`. El LXC no necesita Certbot, certificado público ni Nginx; solo debe responder en LAN por `10.10.10.25:3000`. Dentro de un LXC Debian 12 o Ubuntu 24.04 con red y acceso saliente HTTPS, ejecute como `root`:
 
 ```bash
 apt-get update && apt-get install -y curl
 curl -fsSL https://raw.githubusercontent.com/WsSolitario/Setup-New-Windows/main/scripts/install-lxc.sh -o /tmp/install-lxc.sh
 bash /tmp/install-lxc.sh \
-  --domain windows.ssdevsolutions.com \
-  --public-url https://windows.ssdevsolutions.com \
-  --tls
-```
-
-El instalador instala Node.js 22, PostgreSQL, Nginx opcional, Certbot opcional, crea el usuario de servicio `workstation`, inicializa la base de datos y registra la API como `workstation-setup.service`.
-
-`--tls` requiere que el dominio sea validable por Let's Encrypt desde Internet. Si `10.10.10.25` es una IP privada y el servicio solo existe en la red interna, use un certificado interno o termine TLS en su Nginx Proxy Manager, y ejecute el instalador sin `--tls`:
-
-```bash
-bash /tmp/install-lxc.sh \
-  --domain windows.ssdevsolutions.com \
+  --no-nginx \
   --public-url https://windows.ssdevsolutions.com
 ```
 
-En ese caso, configure el proxy para enviar `windows.ssdevsolutions.com` a `10.10.10.25:3000` y mantenga el certificado de confianza instalado en los equipos Windows.
+El instalador instala Node.js 22 y PostgreSQL, crea el usuario de servicio `workstation`, inicializa la base de datos y registra la API como `workstation-setup.service`. `--public-url` debe seguir siendo HTTPS porque los equipos Windows consumirán la URL externa de NPM.
 
-Si el DNS esta proxificado por Cloudflare, la validacion HTTP puede terminar en otro origen o fallar por un registro `AAAA`. Usa el desafio DNS con un API Token de Cloudflare que tenga solo `Zone.DNS:Edit` para la zona `ssdevsolutions.com`:
+Si ya ejecutaste una instalación anterior con `--tls`, no necesitas reinstalar PostgreSQL ni la API. El fallo de Certbot no impide que el servicio funcione: valida directamente el backend y usa NPM para el acceso externo:
 
 ```bash
-export CLOUDFLARE_API_TOKEN='TOKEN_DE_CLOUDFLARE'
-bash /tmp/install-lxc.sh \
-  --domain windows.ssdevsolutions.com \
-  --public-url https://windows.ssdevsolutions.com \
-  --cloudflare-dns
-unset CLOUDFLARE_API_TOKEN
+systemctl status workstation-setup
+curl http://127.0.0.1:3000/health
+curl http://10.10.10.25:3000/health
 ```
 
-El token se usa solo durante la solicitud y se elimina el archivo temporal de credenciales. La opcion `--cloudflare-dns` es la adecuada cuando el subdominio sigue detras del proxy naranja de Cloudflare.
+Si Nginx del LXC no se utiliza, puede detenerse después de confirmar que NPM llega al puerto 3000:
+
+```bash
+systemctl disable --now nginx
+```
+
+Si por algún motivo no usas NPM y quieres que el propio LXC gestione TLS, entonces sí puedes usar `--tls`. En tu arquitectura actual no debes usar esa opción.
 
 Para una instalación sin dominio/HTTPS durante pruebas aisladas:
 
@@ -46,7 +46,7 @@ Para una instalación sin dominio/HTTPS durante pruebas aisladas:
 bash /tmp/install-lxc.sh --no-nginx --public-url http://10.10.10.25:3000
 ```
 
-En producción, el dominio debe apuntar al LXC antes de usar `--tls`. Después de instalar, copie el `ninite.exe` autorizado a `/opt/workstation-setup/artifacts/ninite.exe` y compruebe:
+Después de instalar, copie el `ninite.exe` autorizado a `/opt/workstation-setup/artifacts/ninite.exe` y compruebe:
 
 ```bash
 systemctl status workstation-setup
