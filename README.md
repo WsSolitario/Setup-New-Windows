@@ -27,6 +27,19 @@ bash /tmp/install-lxc.sh \
 
 En ese caso, configure el proxy para enviar `windows.ssdevsolutions.com` a `10.10.10.25:3000` y mantenga el certificado de confianza instalado en los equipos Windows.
 
+Si el DNS esta proxificado por Cloudflare, la validacion HTTP puede terminar en otro origen o fallar por un registro `AAAA`. Usa el desafio DNS con un API Token de Cloudflare que tenga solo `Zone.DNS:Edit` para la zona `ssdevsolutions.com`:
+
+```bash
+export CLOUDFLARE_API_TOKEN='TOKEN_DE_CLOUDFLARE'
+bash /tmp/install-lxc.sh \
+  --domain windows.ssdevsolutions.com \
+  --public-url https://windows.ssdevsolutions.com \
+  --cloudflare-dns
+unset CLOUDFLARE_API_TOKEN
+```
+
+El token se usa solo durante la solicitud y se elimina el archivo temporal de credenciales. La opcion `--cloudflare-dns` es la adecuada cuando el subdominio sigue detras del proxy naranja de Cloudflare.
+
 Para una instalación sin dominio/HTTPS durante pruebas aisladas:
 
 ```bash

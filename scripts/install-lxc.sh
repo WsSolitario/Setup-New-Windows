@@ -18,6 +18,8 @@ POSTGRES_PASSWORD=""
 LOCAL_ADMIN_PASSWORD=""
 ENABLE_NGINX="false"
 ENABLE_TLS="false"
+ENABLE_CLOUDFLARE_DNS="false"
+CLOUDFLARE_API_TOKEN="${CLOUDFLARE_API_TOKEN:-}"
 BRANCH="main"
 
 log() { printf '\n[%s] %s\n' "$(date '+%F %T')" "$*"; }
@@ -37,6 +39,7 @@ Uso:
 Opciones:
   --domain DOMINIO       Publica la API con Nginx en ese dominio.
   --tls                  Instala Certbot y solicita Let's Encrypt para --domain.
+  --cloudflare-dns       Usa desafio DNS de Cloudflare (requiere CLOUDFLARE_API_TOKEN).
   --public-url URL       URL publica usada para generar setup.ps1.
   --branch RAMA          Rama Git a instalar (por defecto: main).
   --no-nginx             No instala ni configura Nginx.
@@ -63,6 +66,7 @@ parse_args() {
     case "$1" in
       --domain) [[ $# -ge 2 ]] || die "--domain necesita un valor"; DOMAIN="$2"; ENABLE_NGINX="true"; shift 2 ;;
       --tls) ENABLE_TLS="true"; ENABLE_NGINX="true"; shift ;;
+      --cloudflare-dns) ENABLE_CLOUDFLARE_DNS="true"; ENABLE_TLS="true"; ENABLE_NGINX="true"; shift ;;
       --public-url) [[ $# -ge 2 ]] || die "--public-url necesita un valor"; PUBLIC_BASE_URL="$2"; shift 2 ;;
       --branch) [[ $# -ge 2 ]] || die "--branch necesita un valor"; BRANCH="$2"; shift 2 ;;
       --no-nginx) ENABLE_NGINX="false"; ENABLE_TLS="false"; shift ;;
@@ -73,6 +77,9 @@ parse_args() {
 
   if [[ "$ENABLE_TLS" == "true" && -z "$DOMAIN" ]]; then
     die "--tls requiere --domain DOMINIO."
+  fi
+  if [[ "$ENABLE_CLOUDFLARE_DNS" == "true" && -z "$CLOUDFLARE_API_TOKEN" ]]; then
+    die "--cloudflare-dns requiere CLOUDFLARE_API_TOKEN en el entorno."
   fi
   if [[ -z "$PUBLIC_BASE_URL" ]]; then
     if [[ -n "$DOMAIN" ]]; then
@@ -114,6 +121,9 @@ install_packages() {
   fi
   if [[ "$ENABLE_TLS" == "true" ]]; then
     apt-get install -y --no-install-recommends certbot python3-certbot-nginx
+    if [[ "$ENABLE_CLOUDFLARE_DNS" == "true" ]]; then
+      apt-get install -y --no-install-recommends python3-certbot-dns-cloudflare
+    fi
   fi
 }
 
@@ -239,8 +249,21 @@ EOF
   systemctl reload nginx
   if [[ "$ENABLE_TLS" == "true" ]]; then
     log 'Solicitando certificado Lets Encrypt'
-    certbot --nginx --non-interactive --agree-tos --register-unsafely-without-email \
-      --redirect -d "$DOMAIN"
+    if [[ "$ENABLE_CLOUDFLARE_DNS" == "true" ]]; then
+      install -d -m 0700 /etc/letsencrypt
+      printf 'dns_cloudflare_api_token = %s\n' "$CLOUDFLARE_API_TOKEN" > /etc/letsencrypt/cloudflare.ini
+      chmod 0600 /etc/letsencrypt/cloudflare.ini
+      if ! certbot run --non-interactive --agree-tos --register-unsafely-without-email \
+          --dns-cloudflare --dns-cloudflare-credentials /etc/letsencrypt/cloudflare.ini \
+          --nginx --redirect -d "$DOMAIN"; then
+        rm -f /etc/letsencrypt/cloudflare.ini
+        return 1
+      fi
+      rm -f /etc/letsencrypt/cloudflare.ini
+    else
+      certbot --nginx --non-interactive --agree-tos --register-unsafely-without-email \
+        --redirect -d "$DOMAIN"
+    fi
   fi
 }
 
