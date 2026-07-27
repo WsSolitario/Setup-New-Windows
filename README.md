@@ -4,27 +4,40 @@ Backend de preconfiguracion para equipos Windows 11. Registra cada equipo por nu
 
 ## Puesta en marcha con LXC Proxmox
 
-Dentro de un LXC Debian 12 o Ubuntu 24.04 con red y acceso saliente HTTPS, ejecute como `root`:
+La API quedara en el LXC `10.10.10.25` y se publicara como `windows.ssdevsolutions.com`. Cree primero un registro DNS `A` interno que resuelva ese nombre a `10.10.10.25`. Dentro de un LXC Debian 12 o Ubuntu 24.04 con red y acceso saliente HTTPS, ejecute como `root`:
 
 ```bash
 apt-get update && apt-get install -y curl
 curl -fsSL https://raw.githubusercontent.com/WsSolitario/Setup-New-Windows/main/scripts/install-lxc.sh -o /tmp/install-lxc.sh
-bash /tmp/install-lxc.sh --domain api.midominio.com --tls
+bash /tmp/install-lxc.sh \
+  --domain windows.ssdevsolutions.com \
+  --public-url https://windows.ssdevsolutions.com \
+  --tls
 ```
 
 El instalador instala Node.js 22, PostgreSQL, Nginx opcional, Certbot opcional, crea el usuario de servicio `workstation`, inicializa la base de datos y registra la API como `workstation-setup.service`.
 
-Para una instalación sin dominio/HTTPS durante las pruebas:
+`--tls` requiere que el dominio sea validable por Let's Encrypt desde Internet. Si `10.10.10.25` es una IP privada y el servicio solo existe en la red interna, use un certificado interno o termine TLS en su Nginx Proxy Manager, y ejecute el instalador sin `--tls`:
 
 ```bash
-bash /tmp/install-lxc.sh --public-url http://IP_DEL_LXC:3000
+bash /tmp/install-lxc.sh \
+  --domain windows.ssdevsolutions.com \
+  --public-url https://windows.ssdevsolutions.com
+```
+
+En ese caso, configure el proxy para enviar `windows.ssdevsolutions.com` a `10.10.10.25:3000` y mantenga el certificado de confianza instalado en los equipos Windows.
+
+Para una instalación sin dominio/HTTPS durante pruebas aisladas:
+
+```bash
+bash /tmp/install-lxc.sh --no-nginx --public-url http://10.10.10.25:3000
 ```
 
 En producción, el dominio debe apuntar al LXC antes de usar `--tls`. Después de instalar, copie el `ninite.exe` autorizado a `/opt/workstation-setup/artifacts/ninite.exe` y compruebe:
 
 ```bash
 systemctl status workstation-setup
-curl https://api.midominio.com/health
+curl https://windows.ssdevsolutions.com/health
 ```
 
 El instalador está en `scripts/install-lxc.sh` y es idempotente para actualizaciones del mismo repositorio. Las credenciales quedan en `/etc/workstation-setup/workstation-setup.env` con permisos `0600`.
@@ -34,11 +47,11 @@ El instalador está en `scripts/install-lxc.sh` y es idempotente para actualizac
 1. Copie `.env.example` como `.env` y cambie `POSTGRES_PASSWORD`, `LOCAL_ADMIN_PASSWORD` y `PUBLIC_BASE_URL`.
 2. Coloque el instalador autorizado en `artifacts/ninite.exe`.
 3. Inicie los servicios con `docker compose up -d --build`.
-4. Compruebe `https://api.midominio.com/health` desde el proxy inverso.
+4. Compruebe `https://windows.ssdevsolutions.com/health` desde el proxy inverso.
 5. En OOBE, abra una consola elevada con `Shift + F10` y ejecute:
 
 ```powershell
-irm https://api.midominio.com/setup.ps1 | iex
+irm https://windows.ssdevsolutions.com/setup.ps1 | iex
 ```
 
 La API debe publicarse exclusivamente por HTTPS con un certificado de confianza. No use opciones para omitir la validacion TLS.
