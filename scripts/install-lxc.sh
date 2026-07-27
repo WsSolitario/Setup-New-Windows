@@ -158,9 +158,9 @@ install_application() {
   log 'Descargando la aplicacion desde GitHub'
   install -d -m 0755 /opt
   if [[ -d "${APP_DIR}/.git" ]]; then
-    git -C "$APP_DIR" fetch --depth=1 origin "$BRANCH"
-    git -C "$APP_DIR" checkout -B "$BRANCH" "origin/$BRANCH"
-    git -C "$APP_DIR" clean -fd -e artifacts/ninite.exe
+    git -c "safe.directory=$APP_DIR" -C "$APP_DIR" fetch --depth=1 origin "$BRANCH"
+    git -c "safe.directory=$APP_DIR" -C "$APP_DIR" checkout -B "$BRANCH" "origin/$BRANCH"
+    git -c "safe.directory=$APP_DIR" -C "$APP_DIR" clean -fd -e artifacts/ninite.exe
   else
     rm -rf "$APP_DIR"
     git clone --depth=1 --branch "$BRANCH" "$REPOSITORY_URL" "$APP_DIR"
