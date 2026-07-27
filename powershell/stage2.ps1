@@ -1,6 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 $ApiBaseUrl = '{{API_BASE_URL}}'
+$SetupToken = '{{SETUP_TOKEN}}'
 $SetupDirectory = Join-Path $env:ProgramData 'WorkstationSetup'
 $NinitePath = Join-Path $SetupDirectory 'ninite.exe'
 $TaskName = 'WorkstationSetup-Stage2'
@@ -15,7 +16,7 @@ function Invoke-SetupApi {
         [Parameter(Mandatory)] [hashtable] $Body
     )
 
-    Invoke-RestMethod -Uri "$ApiBaseUrl$Path" -Method Post `
+    Invoke-RestMethod -Uri "$ApiBaseUrl$Path" -Method Post -Headers @{ 'X-Setup-Token' = $SetupToken } `
         -ContentType 'application/json' -Body ($Body | ConvertTo-Json -Compress)
 }
 
@@ -60,7 +61,7 @@ try {
         status        = 'instalando_ninite'
     } | Out-Null
 
-    Invoke-WebRequest -Uri "$ApiBaseUrl/ninite.exe" -OutFile $NinitePath -UseBasicParsing
+    Invoke-WebRequest -Uri "$ApiBaseUrl/ninite.exe" -Headers @{ 'X-Setup-Token' = $SetupToken } -OutFile $NinitePath -UseBasicParsing
     $NiniteProcess = Start-Process -FilePath $NinitePath -ArgumentList '/silent' -Wait -PassThru
     if ($NiniteProcess.ExitCode -ne 0) {
         throw "Ninite termino con el codigo $($NiniteProcess.ExitCode)."

@@ -13,6 +13,7 @@ const port = parseInteger(process.env.PORT, 3000);
 const trustProxy = parseInteger(process.env.TRUST_PROXY, 1);
 const templatesDirectory = path.join(__dirname, '..', 'powershell');
 const ninitePath = path.resolve(process.env.NINITE_PATH || path.join(__dirname, '..', 'artifacts', 'ninite.exe'));
+const setupToken = process.env.SETUP_TOKEN || '';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -37,11 +38,13 @@ app.get('/health', async (_req, res, next) => {
 });
 
 app.get('/setup.ps1', async (req, res, next) => {
+  if (!isAuthorized(req, true)) return res.status(401).json({ error: 'token requerido' });
   try {
     const script = await renderPowerShell('setup.ps1', req, {
       LOCAL_ADMIN_USERNAME: requiredEnvironment('LOCAL_ADMIN_USERNAME'),
       LOCAL_ADMIN_FULL_NAME: process.env.LOCAL_ADMIN_FULL_NAME || 'Nombre Plasencia',
-      LOCAL_ADMIN_PASSWORD: requiredEnvironment('LOCAL_ADMIN_PASSWORD')
+      LOCAL_ADMIN_PASSWORD: requiredEnvironment('LOCAL_ADMIN_PASSWORD'),
+      SETUP_TOKEN: requiredEnvironment('SETUP_TOKEN')
     });
     sendPowerShell(res, script, 'setup.ps1');
   } catch (error) {
@@ -50,8 +53,11 @@ app.get('/setup.ps1', async (req, res, next) => {
 });
 
 app.get('/stage2.ps1', async (req, res, next) => {
+  if (!isAuthorized(req, true)) return res.status(401).json({ error: 'token requerido' });
   try {
-    const script = await renderPowerShell('stage2.ps1', req);
+    const script = await renderPowerShell('stage2.ps1', req, {
+      SETUP_TOKEN: requiredEnvironment('SETUP_TOKEN')
+    });
     sendPowerShell(res, script, 'stage2.ps1');
   } catch (error) {
     next(error);
@@ -59,6 +65,7 @@ app.get('/stage2.ps1', async (req, res, next) => {
 });
 
 app.get('/ninite.exe', async (_req, res, next) => {
+  if (!isAuthorized(_req)) return res.status(401).json({ error: 'token requerido' });
   try {
     await fs.access(ninitePath);
     res.set({
@@ -75,6 +82,7 @@ app.get('/ninite.exe', async (_req, res, next) => {
 });
 
 app.post('/api/register', async (req, res, next) => {
+  if (!isAuthorized(req)) return res.status(401).json({ error: 'token requerido' });
   const serialNumber = normalizeText(req.body?.serial_number, 128);
   const hostname = normalizeText(req.body?.hostname, 255);
 
@@ -102,6 +110,7 @@ app.post('/api/register', async (req, res, next) => {
 });
 
 app.post('/api/status', async (req, res, next) => {
+  if (!isAuthorized(req)) return res.status(401).json({ error: 'token requerido' });
   const serialNumber = normalizeText(req.body?.serial_number, 128);
   const status = normalizeStatus(req.body?.status);
 
@@ -175,6 +184,13 @@ function sendPowerShell(res, script, fileName) {
 
 function escapePowerShellString(value) {
   return String(value).replaceAll("'", "''");
+}
+
+function isAuthorized(req, allowQueryToken = false) {
+  if (!setupToken) return false;
+  const suppliedToken = req.get('X-Setup-Token') || (allowQueryToken ? req.query.token : '');
+  if (typeof suppliedToken !== 'string' || suppliedToken.length !== setupToken.length) return false;
+  return require('node:crypto').timingSafeEqual(Buffer.from(suppliedToken), Buffer.from(setupToken));
 }
 
 function normalizeText(value, maxLength) {

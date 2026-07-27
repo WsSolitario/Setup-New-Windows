@@ -1,6 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 $ApiBaseUrl = '{{API_BASE_URL}}'
+$SetupToken = '{{SETUP_TOKEN}}'
 $LocalUserName = '{{LOCAL_ADMIN_USERNAME}}'
 $LocalUserFullName = '{{LOCAL_ADMIN_FULL_NAME}}'
 $LocalUserPassword = '{{LOCAL_ADMIN_PASSWORD}}'
@@ -14,7 +15,7 @@ function Invoke-SetupApi {
         [Parameter(Mandatory)] [hashtable] $Body
     )
 
-    Invoke-RestMethod -Uri "$ApiBaseUrl$Path" -Method Post `
+    Invoke-RestMethod -Uri "$ApiBaseUrl$Path" -Method Post -Headers @{ 'X-Setup-Token' = $SetupToken } `
         -ContentType 'application/json' -Body ($Body | ConvertTo-Json -Compress)
 }
 
@@ -75,7 +76,7 @@ try {
     New-Item -Path $OobePath -Force | Out-Null
     New-ItemProperty -Path $OobePath -Name 'BypassNRO' -Value 1 -PropertyType DWord -Force | Out-Null
 
-    Invoke-WebRequest -Uri "$ApiBaseUrl/stage2.ps1" -OutFile $Stage2Path -UseBasicParsing
+    Invoke-WebRequest -Uri "$ApiBaseUrl/stage2.ps1?token=$([uri]::EscapeDataString($SetupToken))" -OutFile $Stage2Path -UseBasicParsing
     Unblock-File -Path $Stage2Path
 
     $Action = New-ScheduledTaskAction -Execute 'powershell.exe' `

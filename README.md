@@ -65,7 +65,7 @@ El instalador está en `scripts/install-lxc.sh` y es idempotente para actualizac
 5. En OOBE, abra una consola elevada con `Shift + F10` y ejecute:
 
 ```powershell
-irm https://windows.ssdevsolutions.com/setup.ps1 | iex
+irm "https://windows.ssdevsolutions.com/setup.ps1?token=TOKEN_DEL_EQUIPO_TI" | iex
 ```
 
 La API debe publicarse exclusivamente por HTTPS con un certificado de confianza. No use opciones para omitir la validacion TLS.
@@ -83,7 +83,7 @@ La API debe publicarse exclusivamente por HTTPS con un certificado de confianza.
 
 ## Operacion y seguridad
 
-- `setup.ps1` contiene temporalmente la contrasena local porque Windows necesita establecerla y configurar autologon. Por ello el endpoint no debe quedar expuesto fuera de la ventana de aprovisionamiento. Restrinja en el proxy por VPN, red de origen o allowlist y rote la contrasena al terminar los 34 equipos.
+- `setup.ps1` contiene temporalmente la contrasena local porque Windows necesita establecerla y configurar autologon. Todos los endpoints de aprovisionamiento requieren `SETUP_TOKEN`; no compartas el token fuera del equipo de TI y rótalo al terminar los 34 equipos.
 - La contrasena de autologon queda en el registro durante el aprovisionamiento. La fase 2 elimina `DefaultPassword` al finalizar correctamente.
 - Los logs locales quedan en `C:\ProgramData\WorkstationSetup\stage1.log` y `stage2.log`.
 - Si la fase 2 falla, informa `error_fase_2` y conserva la tarea para reintentar en el siguiente inicio de sesion.

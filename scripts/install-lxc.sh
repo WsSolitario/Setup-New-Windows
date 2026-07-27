@@ -17,6 +17,7 @@ DOMAIN=""
 PUBLIC_BASE_URL=""
 POSTGRES_PASSWORD=""
 LOCAL_ADMIN_PASSWORD=""
+SETUP_TOKEN="${SETUP_TOKEN:-}"
 ENABLE_NGINX="false"
 ENABLE_TLS="false"
 ENABLE_CLOUDFLARE_DNS="false"
@@ -98,6 +99,10 @@ prompt_secrets() {
   fi
   if [[ -z "${LOCAL_ADMIN_PASSWORD}" ]]; then
     read -r -s -p 'Contrasena de la cuenta local Plasencia para setup.ps1: ' LOCAL_ADMIN_PASSWORD; printf '\n'
+  fi
+  if [[ -z "${SETUP_TOKEN}" ]]; then
+    SETUP_TOKEN="$(openssl rand -hex 32)"
+    log 'Se genero un SETUP_TOKEN aleatorio. Guardalo para el equipo de TI.'
   fi
   [[ ${#POSTGRES_PASSWORD} -ge 12 ]] || die 'La contrasena de PostgreSQL debe tener al menos 12 caracteres.'
   [[ -n "$LOCAL_ADMIN_PASSWORD" ]] || die 'La contrasena local no puede estar vacia.'
@@ -191,6 +196,7 @@ PUBLIC_BASE_URL=${PUBLIC_BASE_URL}
 LOCAL_ADMIN_USERNAME=Plasencia
 LOCAL_ADMIN_FULL_NAME=Nombre Plasencia
 LOCAL_ADMIN_PASSWORD=${LOCAL_ADMIN_PASSWORD}
+SETUP_TOKEN=${SETUP_TOKEN}
 NINITE_PATH=${APP_DIR}/artifacts/ninite.exe
 EOF
   chown "$APP_USER:$APP_GROUP" /etc/workstation-setup/workstation-setup.env
