@@ -157,14 +157,18 @@ SQL
 install_application() {
   log 'Descargando la aplicacion desde GitHub'
   install -d -m 0755 /opt
-  if [[ -d "${APP_DIR}/.git" ]]; then
-    runuser -u "$APP_USER" -- git -C "$APP_DIR" fetch --depth=1 origin "$BRANCH"
-    runuser -u "$APP_USER" -- git -C "$APP_DIR" checkout -B "$BRANCH" "origin/$BRANCH"
-    runuser -u "$APP_USER" -- git -C "$APP_DIR" clean -fd -e artifacts/ninite.exe
-  else
-    rm -rf "$APP_DIR"
-    git clone --depth=1 --branch "$BRANCH" "$REPOSITORY_URL" "$APP_DIR"
+  local ninite_backup
+  ninite_backup="$(mktemp -d)"
+  if [[ -f "$APP_DIR/artifacts/ninite.exe" ]]; then
+    cp "$APP_DIR/artifacts/ninite.exe" "$ninite_backup/ninite.exe"
   fi
+  rm -rf "$APP_DIR"
+  git clone --depth=1 --branch "$BRANCH" "$REPOSITORY_URL" "$APP_DIR"
+  if [[ -f "$ninite_backup/ninite.exe" ]]; then
+    install -d "$APP_DIR/artifacts"
+    cp "$ninite_backup/ninite.exe" "$APP_DIR/artifacts/ninite.exe"
+  fi
+  rm -rf "$ninite_backup"
   install -d -o "$APP_USER" -g "$APP_GROUP" -m 0750 "$APP_DIR/artifacts"
   chown -R "$APP_USER:$APP_GROUP" "$APP_DIR"
   runuser -u "$APP_USER" -- npm --prefix "$APP_DIR" ci --omit=dev
