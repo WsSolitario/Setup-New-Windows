@@ -11,6 +11,7 @@ readonly APP_DIR="/opt/${APP_NAME}"
 readonly SERVICE_FILE="/etc/systemd/system/${APP_NAME}.service"
 readonly NGINX_SITE="/etc/nginx/sites-available/${APP_NAME}"
 readonly REPOSITORY_URL="${REPOSITORY_URL:-https://github.com/WsSolitario/Setup-New-Windows.git}"
+readonly NINITE_DOWNLOAD_URL="${NINITE_DOWNLOAD_URL:-https://ninite.com/anydesk-chrome-firefox-git-python3-revo-teams-teamviewer15-winrar-zoom/ninite.exe}"
 
 DOMAIN=""
 PUBLIC_BASE_URL=""
@@ -164,6 +165,13 @@ install_application() {
   runuser -u "$APP_USER" -- npm --prefix "$APP_DIR" ci --omit=dev
   runuser -u "$APP_USER" -- psql --version >/dev/null 2>&1 || true
   PGPASSWORD="$POSTGRES_PASSWORD" runuser -u "$APP_USER" -- env PGHOST=127.0.0.1 PGPORT=5432 PGDATABASE=workstations PGUSER="$APP_USER" psql -v ON_ERROR_STOP=1 -f "$APP_DIR/sql/init.sql"
+  if [[ ! -s "$APP_DIR/artifacts/ninite.exe" ]]; then
+    log 'Descargando Ninite desde ninite.com'
+    curl --fail --location --retry 3 --proto '=https' --tlsv1.2 \
+      "$NINITE_DOWNLOAD_URL" -o "$APP_DIR/artifacts/ninite.exe"
+    chown "$APP_USER:$APP_GROUP" "$APP_DIR/artifacts/ninite.exe"
+    chmod 0755 "$APP_DIR/artifacts/ninite.exe"
+  fi
 }
 
 write_environment() {

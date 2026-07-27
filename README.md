@@ -22,7 +22,7 @@ bash /tmp/install-lxc.sh \
   --public-url https://windows.ssdevsolutions.com
 ```
 
-El instalador instala Node.js 22 y PostgreSQL, crea el usuario de servicio `workstation`, inicializa la base de datos y registra la API como `workstation-setup.service`. `--public-url` debe seguir siendo HTTPS porque los equipos Windows consumirán la URL externa de NPM.
+El instalador instala Node.js 22 y PostgreSQL, crea el usuario de servicio `workstation`, inicializa la base de datos, descarga Ninite desde la URL oficial y registra la API como `workstation-setup.service`. `--public-url` debe seguir siendo HTTPS porque los equipos Windows consumirán la URL externa de NPM.
 
 Si ya ejecutaste una instalación anterior con `--tls`, no necesitas reinstalar PostgreSQL ni la API. El fallo de Certbot no impide que el servicio funcione: valida directamente el backend y usa NPM para el acceso externo:
 
@@ -46,11 +46,12 @@ Para una instalación sin dominio/HTTPS durante pruebas aisladas:
 bash /tmp/install-lxc.sh --no-nginx --public-url http://10.10.10.25:3000
 ```
 
-Después de instalar, copie el `ninite.exe` autorizado a `/opt/workstation-setup/artifacts/ninite.exe` y compruebe:
+Después de instalar, el archivo queda en `/opt/workstation-setup/artifacts/ninite.exe`. La fase 2 no descarga directamente desde `ninite.com`: descarga el ejecutable desde la API mediante `https://windows.ssdevsolutions.com/ninite.exe`. Compruebe:
 
 ```bash
 systemctl status workstation-setup
 curl https://windows.ssdevsolutions.com/health
+curl -I https://windows.ssdevsolutions.com/ninite.exe
 ```
 
 El instalador está en `scripts/install-lxc.sh` y es idempotente para actualizaciones del mismo repositorio. Las credenciales quedan en `/etc/workstation-setup/workstation-setup.env` con permisos `0600`.
