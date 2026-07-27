@@ -15,8 +15,8 @@ readonly NINITE_DOWNLOAD_URL="${NINITE_DOWNLOAD_URL:-https://ninite.com/anydesk-
 
 DOMAIN=""
 PUBLIC_BASE_URL=""
-POSTGRES_PASSWORD=""
-LOCAL_ADMIN_PASSWORD=""
+POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-}"
+LOCAL_ADMIN_PASSWORD="${LOCAL_ADMIN_PASSWORD:-}"
 SETUP_TOKEN="${SETUP_TOKEN:-}"
 ENABLE_NGINX="false"
 ENABLE_TLS="false"
@@ -136,7 +136,7 @@ install_packages() {
 configure_database() {
   log 'Configurando PostgreSQL'
   systemctl enable --now postgresql
-  runuser -u postgres -- env -u PGUSER -u PGPASSWORD psql -v ON_ERROR_STOP=1 <<SQL
+  runuser -u postgres -- env -i PATH=/usr/bin:/bin HOME=/var/lib/postgresql psql -v ON_ERROR_STOP=1 <<SQL
 DO \$\$
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '${APP_USER}') THEN
@@ -147,11 +147,11 @@ BEGIN
 END
 \$\$;
 SQL
-  if ! runuser -u postgres -- env -u PGUSER -u PGPASSWORD psql -tAc "SELECT 1 FROM pg_database WHERE datname='workstations'" | grep -q 1; then
-    runuser -u postgres -- env -u PGUSER -u PGPASSWORD createdb -O "${APP_USER}" workstations
+  if ! runuser -u postgres -- env -i PATH=/usr/bin:/bin HOME=/var/lib/postgresql psql -tAc "SELECT 1 FROM pg_database WHERE datname='workstations'" | grep -q 1; then
+    runuser -u postgres -- env -i PATH=/usr/bin:/bin HOME=/var/lib/postgresql createdb -O "${APP_USER}" workstations
   fi
   # Permite que el usuario de la API use el esquema sin abrir PostgreSQL a Internet.
-  runuser -u postgres -- env -u PGUSER -u PGPASSWORD psql -d workstations -v ON_ERROR_STOP=1 -c "GRANT CONNECT ON DATABASE workstations TO ${APP_USER}; GRANT USAGE,CREATE ON SCHEMA public TO ${APP_USER};"
+  runuser -u postgres -- env -i PATH=/usr/bin:/bin HOME=/var/lib/postgresql psql -d workstations -v ON_ERROR_STOP=1 -c "GRANT CONNECT ON DATABASE workstations TO ${APP_USER}; GRANT USAGE,CREATE ON SCHEMA public TO ${APP_USER};"
 }
 
 install_application() {
