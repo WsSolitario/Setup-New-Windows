@@ -65,8 +65,10 @@ El instalador está en `scripts/install-lxc.sh` y es idempotente para actualizac
 5. En OOBE, abra una consola elevada con `Shift + F10` y ejecute:
 
 ```powershell
-irm "https://windows.ssdevsolutions.com/setup.ps1?token=TOKEN_DEL_EQUIPO_TI" | iex
+irm https://windows.ssdevsolutions.com/setup.ps1 | iex
 ```
+
+El script pedira `Escribe el token de aprovisionamiento`. TI solo debe escribir ese token, sin query string ni headers. El token se usa como autenticacion de la API y como contrasena inicial del usuario local `Plasencia`; usa una clave facil de escribir pero con mayusculas, minusculas, numeros y simbolos.
 
 La API debe publicarse exclusivamente por HTTPS con un certificado de confianza. No use opciones para omitir la validacion TLS.
 

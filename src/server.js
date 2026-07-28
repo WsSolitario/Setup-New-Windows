@@ -38,13 +38,10 @@ app.get('/health', async (_req, res, next) => {
 });
 
 app.get('/setup.ps1', async (req, res, next) => {
-  if (!isAuthorized(req, true)) return res.status(401).json({ error: 'token requerido' });
   try {
     const script = await renderPowerShell('setup.ps1', req, {
       LOCAL_ADMIN_USERNAME: requiredEnvironment('LOCAL_ADMIN_USERNAME'),
-      LOCAL_ADMIN_FULL_NAME: process.env.LOCAL_ADMIN_FULL_NAME || 'Nombre Plasencia',
-      LOCAL_ADMIN_PASSWORD: requiredEnvironment('LOCAL_ADMIN_PASSWORD'),
-      SETUP_TOKEN: requiredEnvironment('SETUP_TOKEN')
+      LOCAL_ADMIN_FULL_NAME: process.env.LOCAL_ADMIN_FULL_NAME || 'Nombre Plasencia'
     });
     sendPowerShell(res, script, 'setup.ps1');
   } catch (error) {

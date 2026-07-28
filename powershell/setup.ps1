@@ -1,10 +1,13 @@
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 $ApiBaseUrl = '{{API_BASE_URL}}'
-$SetupToken = '{{SETUP_TOKEN}}'
+$SetupToken = Read-Host 'Escribe el token de aprovisionamiento'
+if ([string]::IsNullOrWhiteSpace($SetupToken)) {
+    throw 'El token de aprovisionamiento es obligatorio.'
+}
 $LocalUserName = '{{LOCAL_ADMIN_USERNAME}}'
 $LocalUserFullName = '{{LOCAL_ADMIN_FULL_NAME}}'
-$LocalUserPassword = '{{LOCAL_ADMIN_PASSWORD}}'
+$LocalUserPassword = $SetupToken
 $SetupDirectory = Join-Path $env:ProgramData 'WorkstationSetup'
 $Stage2Path = Join-Path $SetupDirectory 'stage2.ps1'
 $TaskName = 'WorkstationSetup-Stage2'
